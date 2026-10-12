@@ -347,10 +347,14 @@ class EdgeStatistic(BaseEstimator):
 
     def __init__(self, selection_statistic: str = 'spearman',
                  selection_input: str = 'raw',
-                 presence_filter: Union[bool, float] = False):
+                 presence_filter: Union[bool, float] = False, 
+                 edge_mask=None,
+                 effect_size: str = 'semipartial'): 
         self.selection_statistic = selection_statistic
         self.selection_input = selection_input
         self.presence_filter = presence_filter
+        self.edge_mask = edge_mask
+        self.effect_size = effect_size
         self._statistic, self._input = resolve_selection_spec(
             selection_statistic, selection_input)
 
@@ -380,11 +384,24 @@ class EdgeStatistic(BaseEstimator):
         # additive to the variance gate above, which already drops all-zero edges.
         # It always sees the raw connectome: confound control happens inside the
         # statistic below, never by residualising X before this point.
+                          
         presence_threshold = resolve_presence_threshold(self.presence_filter)
         if presence_threshold is not None:
             presence = (X != 0).float().mean(dim=0)
             valid_edges = valid_edges & (presence >= presence_threshold)
 
+        # Edge Mask (not required): Allows restriction to a predefined edge set 
+        # (e.g., edges of specific region). Masked edges keep position in the edge
+        # vector but are never tested, therefore never selected. Accepts node-by-node
+        # matrix or upper-triangle edge vector. 
+
+        if self.edge_mask is not None: 
+            mask = np.asarray(self.edge_mask, dtype=bool)
+            if mask.ndim == 2: 
+                mask = mask[np.triu_indices(mask.shape[0], k=1)]
+            valid_edges = valid_edges & torch.as_tensor(mask, device=X.device)
+
+                          
         confounds = covariates if self._input == 'residualized' else None
         if confounds is None and self._input == 'residualized':
             raise ValueError(
@@ -394,7 +411,7 @@ class EdgeStatistic(BaseEstimator):
             )
         r_edges, t_edges, df = edge_statistics(
             X=X, Y_perms=y, confounds=confounds,
-            correlation_type=self._statistic)
+            correlation_type=self._statistic, effect_size=self.effect_size)
 
         # Excluded edges get r = t = 0, which no threshold selects. No dynamic
         # shape change.
@@ -445,13 +462,22 @@ class UnivariateEdgeSelection(BaseEstimator):
     edge_selection: list of selectors (e.g. PThreshold), default=None
         One or more selection strategies. Provide a list of multiple
         configurations to tune them via an inner CV.
+    edge_mask: array-like of bool, default=None
+        Optional mask restricting selection to a predefined set of edges (e.g.
+        the edges of one region), gives as node-by-node matrix or as upper 
+        triangular edge vector. Edges outside mask can never be tested/selected. 
+        Applied per fold and per permutation. 
+    effect_size: str, default='semipartial'
+        Edge effect size reported alongside t stats. Partial vs semipartial will 
+        change reported magnitude, but will not effect edge selection. 
     """
     def __init__(self,
                  selection_statistic: str = 'spearman',
                  selection_input: str = 'raw',
                  presence_filter: Union[bool, float] = False,
                  connected_components: Union[bool, int] = False,
-                 edge_selection: Union[list, None, PThreshold] = None):
+                 edge_selection: Union[list, None, PThreshold] = None, edge_mask=None,
+                 effect_size: str = 'semipartial'):
         self.r_edges = None
         self.t_edges = None
         self.df = None
@@ -461,7 +487,9 @@ class UnivariateEdgeSelection(BaseEstimator):
         self.connected_components = connected_components
         self.statistic = EdgeStatistic(selection_statistic=selection_statistic,
                                        selection_input=selection_input,
-                                       presence_filter=presence_filter)
+                                       presence_filter=presence_filter, 
+                                       edge_mask=edge_mask, 
+                                       effect_size=effect_size)
         self.edge_selection = edge_selection
         if isinstance(edge_selection, (list, tuple)):
             self.edge_selection = edge_selection
