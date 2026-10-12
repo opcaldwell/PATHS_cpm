@@ -107,7 +107,7 @@ def get_residuals(data, confounds):
         raise ValueError(f"Data shape {data.shape} incompatible with confounds {confounds.shape}")
 
 
-def edge_statistics(X, Y_perms, correlation_type='pearson', confounds=None):
+def edge_statistics(X, Y_perms, correlation_type='pearson', confounds=None, effect_size='semipartial'):
     """
     Univariate edge selection as a vectorised OLS GLM, batched over permutations.
 
@@ -149,7 +149,8 @@ def edge_statistics(X, Y_perms, correlation_type='pearson', confounds=None):
                    controls for these covariates.
 
     Returns:
-        r_matrix: (N_features, N_perms) — semi-partial correlation (effect size)
+        r_matrix: (N_features, N_perms) — semi-partial correlation (default) or partial correlation 
+                  (effect size)
         t_matrix: (N_features, N_perms) — t statistic of the edge coefficient
         df: int — its degrees of freedom, ``N - 2 - N_confounds``
     """
@@ -206,7 +207,8 @@ def edge_statistics(X, Y_perms, correlation_type='pearson', confounds=None):
     # t statistic of the edge coefficient, df = N - 2 - k.
     df = n_samples - 2 - k_confounds
     t_matrix = partial_r * torch.sqrt(df / (1 - partial_r ** 2))
-
+    if effect_size == 'partial': 
+        return partial_r, t_matrix,df
     return semipartial_r, t_matrix, df
 
 
