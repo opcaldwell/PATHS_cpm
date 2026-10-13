@@ -128,7 +128,7 @@ class ResultsManager:
         # [Repeats, 2 (spearman, r2), Models, Networks, Runs]. 
         self.n_samples = n_samples 
         if n_samples is not None: 
-          self.pooled_pred = torch.full((n_samples, len(models), len(Networks), n_runs), float('nan'))
+          self.pooled_pred = torch.full((n_samples, len(Models), len(Networks), n_runs), float('nan'))
           self.pooled_true = torch.full((n_samples, n_runs), float ('nan'))
           self.pooled_metrics = np.full((n_repeats, 2, len(Models), len(Networks), n_runs), 
                                         np.nan, dtype=np.float32)
@@ -256,7 +256,7 @@ class ResultsManager:
                 
                 else: 
                   np.save(os.path.join(self.results_directory, 'edges.npy'), 
-                          vector_to_matrix_tensor_version(selected_edges, dim=0).float.nump())
+                          vector_to_matrix_tensor_version(selected_edges, dim=0).float.numpy())
         return edge_stability
 
     def store_predictions(self, y_pred, y_true, fold, test_indices, repeat=0):
@@ -342,23 +342,24 @@ class ResultsManager:
       targets such as many zeros are handled correctly) and prediction R^2 = 1 - SSE / SST. 
       Written to ``pooled_metrics[repeat, :, :, :, run_idx]``.
       """
-    if self.n_samples is None: 
-      return 
-    pred = self.pooled_pred[:, :, :, run_idx].numpy()
-    true = self.pooled_true[:, run_idx].numpy()
-    # Constant predictions
-    with np.errstate(invalid='ignore', divide='ignore'): 
-      sst = ((true - true.mean(axis=0)) ** 2).sum(axis=0)
-      r2 = 1 - sse / sst
-      rank_true = rankdata(true, axis=0)
-      rank_pred = rankdata(pred, axis=0)
-      rank_true -= rank_true.mean(axis=0)
-      rank_pred -= rank_pred.mean(axis=0)
-      rho = ((rank_true[:, None, None, :] * rank_pred).sum(axis=0)
-             / np.sqrt((rank_true ** 2).sum(axis=0) * (rank_pred ** 2).sum(axis=0)))
-      self.pooled_metrics[repeat, :, :, :, run_idx] = np.stack([rho, r2])
-      self.pooled_pred[:, :, :, run_idx] = float('nan')
-      self.pooled_true[:, run_idx] = float ('nan')
+      if self.n_samples is None: 
+        return 
+      pred = self.pooled_pred[:, :, :, run_idx].numpy()
+      true = self.pooled_true[:, run_idx].numpy()
+      # Constant predictions
+      with np.errstate(invalid='ignore', divide='ignore'): 
+        sst = ((true - true.mean(axis=0)) ** 2).sum(axis=0)
+        sse = ((true[:, None, None, :] - pred) ** 2).sum(axis=0)
+        r2 = 1 - sse / sst
+        rank_true = rankdata(true, axis=0)
+        rank_pred = rankdata(pred, axis=0)
+        rank_true -= rank_true.mean(axis=0)
+        rank_pred -= rank_pred.mean(axis=0)
+        rho = ((rank_true[:, None, None, :] * rank_pred).sum(axis=0)
+               / np.sqrt((rank_true ** 2).sum(axis=0) * (rank_pred ** 2).sum(axis=0)))
+        self.pooled_metrics[repeat, :, :, :, run_idx] = np.stack([rho, r2])
+        self.pooled_pred[:, :, :, run_idx] = float('nan')
+        self.pooled_true[:, run_idx] = float ('nan')
 
     def save_pooled_metrics(self): 
       """
