@@ -485,13 +485,14 @@ class UnivariateEdgeSelection(BaseEstimator):
         self.selection_input = selection_input
         self.presence_filter = presence_filter
         self.connected_components = connected_components
+        self.edge_mask = edge_mask
+        self.effect_size = effect_size
         self.statistic = EdgeStatistic(selection_statistic=selection_statistic,
                                        selection_input=selection_input,
                                        presence_filter=presence_filter, 
                                        edge_mask=edge_mask, 
                                        effect_size=effect_size, 
-                                       self.effect_size = effect_size
-                                       self.edge_mask = edge_mask)
+                                       )
         self.edge_selection = edge_selection
         if isinstance(edge_selection, (list, tuple)):
             self.edge_selection = edge_selection
