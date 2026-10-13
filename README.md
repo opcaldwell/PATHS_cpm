@@ -3,7 +3,7 @@
   This is a fork of [wwu-mmll/confound_corrected_cpm](https://github.com/wwu-mml
   l/confound_corrected_cpm) at v0.7.0. It adds options used 
   in our ABCD adversity CPM analyses, which follow Simon et al. (2026, *Commun
-  Biol*, doi:10.1038/s42003-026-10822-8). Every option added is off by
+  Biol*, [doi:10.1038/s42003-026-10822-8](https://doi.org/10.1038/s42003-026-10822-8)). Every option added is off by
   default, so with the defaults, the package behaves like the author's v0.7.0.
 
 ## What we added
