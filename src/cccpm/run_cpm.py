@@ -19,6 +19,7 @@ target = targets.columns[int(os.environ['SLURM_ARRAY_TASK_ID'])]
 
 X = np.load(os.path.join(DATA_DIR, 'X.npy'))
 covariates = pd.read_csv(os.path.join(DATA_DIR, 'covariates.csv'),
+                         dtype={'site':str})
 site = covariates['site']
 covariates = pd.get_dummies(covariates, drop_first=True, dtype=float)
 dtype={'site': str})
