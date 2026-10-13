@@ -22,7 +22,6 @@ covariates = pd.read_csv(os.path.join(DATA_DIR, 'covariates.csv'),
                          dtype={'site':str})
 site = covariates['site']
 covariates = pd.get_dummies(covariates, drop_first=True, dtype=float)
-dtype={'site': str})
 cv = FixedSplits.load(os.path.join(DATA_DIR, 'folds.npz'))
 
 edge_selection = UnivariateEdgeSelection(
@@ -37,7 +36,7 @@ cpm = CPMAnalysis(results_directory=os.path.join(OUTPUT_DIR, target),
                   edge_selection=edge_selection,
                   impute_missing_values=False,
                   n_permutations=int(sys.argv[1]),
-                  permutation_groups=covariates='site',
+                  permutation_groups=site,
                   pack_fold_edges=True)
 
 cpm.run(X=X, y=targets[target].values, covariates=covariates)
