@@ -256,7 +256,7 @@ class ResultsManager:
                 
                 else: 
                   np.save(os.path.join(self.results_directory, 'edges.npy'), 
-                          vector_to_matrix_tensor_version(selected_edges, dim=0).float.numpy())
+                          vector_to_matrix_tensor_version(selected_edges, dim=0).float().numpy())
         return edge_stability
 
     def store_predictions(self, y_pred, y_true, fold, test_indices, repeat=0):
