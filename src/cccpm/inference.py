@@ -403,7 +403,7 @@ class PermutationManager:
             return sig, meta
         return sig
    
-    def pooled_permutation_p_values(results_directory): 
+def pooled_permutation_p_values(results_directory): 
         """
         Permutation p-values on the pooled metrics (Spearman rho and prediction R^2).
 
@@ -413,12 +413,13 @@ class PermutationManager:
         :param results_directory: Directory with ``pooled_metrics.npy`` and a ``permutation`` subfolder 
         its null counterpart. 
         """
-        true = np.load(os.path.join(results_directory, 'pooled_metrics.npy'))
-        null = np.load(os.path.join(results_directory, 'permutation', 'pooled_metrics.npy'))
-        true_stat = np.median(true[..., 0], axis=0)
-        null_stat = np.median(null, axis=0)
-        p = (1 + (null_stat >= true_stat[..., None]).sum(axis=-1)) / (1 + null_stat.shape[-1])
-        rows = [{'model': m.name, 'network': n.name, 
-                 'spearman': true_stat[0, m, n], 'p_r2': p[1, m, n]}
-                for m in Models for n in Networks]
-        pd.DataFrame(rows).to_csv(os.path.join(results_directory, 'pooled_p_values.csv'), index=False)
+    true = np.load(os.path.join(results_directory, 'pooled_metrics.npy'))
+    null = np.load(os.path.join(results_directory, 'permutation', 'pooled_metrics.npy'))
+    true_stat = np.median(true[..., 0], axis=0)
+    null_stat = np.median(null, axis=0)
+    p = (1 + (null_stat >= true_stat[..., None]).sum(axis=-1)) / (1 + null_stat.shape[-1])
+    rows = [{'model': m.name, 'network': n.name,
+               'spearman': true_stat[0, m, n], 'r2': true_stat[1, m, n],
+               'p_spearman': p[0, m, n], 'p_r2': p[1, m, n]}
+              for m in Models for n in Networks]
+    pd.DataFrame(rows).to_csv(os.path.join(results_directory, 'pooled_p_values.csv'), index=False)
