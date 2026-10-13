@@ -17,7 +17,7 @@ from cccpm.logging import setup_logging
 from cccpm.models.linear_model import LinearCPM
 from cccpm.edge_selection import UnivariateEdgeSelection, PThreshold
 from cccpm.results_manager import ResultsManager
-from cccpm.inference import PermutationManager
+from cccpm.inference import PermutationManager, pooled_permutation_p_values
 from cccpm.preprocessing import (to_device, torch_train_test_split, torch_impute_missing_values,
                                  residualize_train_test, select_stable_edges)
 from cccpm.validation import (check_data, detect_task_type, validate_task_type,
@@ -78,6 +78,9 @@ class CPMAnalysis:
                  atlas_labels: str = None,
                  device: str = 'cpu',
                  random_state: int = 42,
+                 permutation_groups=None, 
+                 pack_fold_edges: bool = False, 
+                 fixed_edges=None, 
                  **removed):
         """
         Initialize the CPMAnalysis object.
@@ -167,6 +170,18 @@ class CPMAnalysis:
         random_state: int, default=42
             Seed for permutation generation. Uses a local RNG and does not modify
             the global NumPy/torch random state.
+        permutation_groups: array-like, default=None
+            Block label per subject (e.g., site), in same row order as X. 
+            If given, y is only permuted within blocks.
+        pack_fold_edges: bool, default=False
+            If ``True``, save the per-fold selected edges as a bit-packed
+            upper triangle vecter, ``edges_packed.npz``) instead of dense node-by-node
+            ``edges.npy``. Much smaller for large parcellations with many folds or repeats. 
+        fixed_edges: array-like of bool, default=None
+            Optional precomputed edge maskes of shape [N_features, 2, N_folds]
+            (positive/negative, in the outer-fold order of ``cv``). If given, edge selection 
+            is skipped and each fold's model is fit on these edges, e.g. 
+            the edges two phenotypes share within each training fold. 
         """
         for old, (new, why) in _RENAMED_IN_0_7_0.items():
             if old in removed:
@@ -187,6 +202,9 @@ class CPMAnalysis:
         # Use a local seed for permutation generation instead of mutating the
         # global NumPy/torch RNG (which would silently affect the user's other code).
         self.random_state = random_state
+        self.permutation_groups = None if permutation_groups is None else np.asarray(permutation_groups)
+        self.pack_fold_edges = pack_fold_edges
+        self.fixed_edges = None if fixed_edges is None else np.asarray(fixed_edges, dtype=bool)
         os.makedirs(self.results_directory, exist_ok=True)
         os.makedirs(os.path.join(self.results_directory, "edges"), exist_ok=True)
         os.makedirs(os.path.join(self.results_directory, "permutation"), exist_ok=True)
@@ -442,6 +460,7 @@ class CPMAnalysis:
                 method=self.stability_significance_method,
                 nbs_stability_threshold=self.nbs_stability_threshold,
                 nbs_component_stat=self.nbs_component_stat)
+          pooled_permutation_p_values(self.results_directory)
 
         self.logger.info("=" * 50)
         self.logger.info("Estimation completed.")
@@ -455,6 +474,8 @@ class CPMAnalysis:
         reporter.generate_html_report()
 
     def _create_permuted_y(self, y):
+      if self.permutation_groups is not None: 
+        return self._create_block_permuted_y(y)
         # 1. Create a matrix of the repeat vector
         y_tensor = to_device(y, "cpu")
         y_matrix = y_tensor.unsqueeze(0).expand(self.n_permutations, -1)
@@ -473,6 +494,18 @@ class CPMAnalysis:
         # 4. Return as numpy [N_samples, N_perms] (boundary: this feeds into the pipeline)
         return permuted.t().numpy()
 
+    def _create_block_permuted_y(self, y): 
+      y = np.asarray(y, dtype.np.float32).reshape(-1)
+      blocks = [np.flatnonzero(self.permutation_groups == g) for g in np.unique(self.permutation_groups)]
+      generator = torch.Generator().manual_seed(self.random_state)
+      permuted = np.empty((y.shape[0], self.n_permutations), dtype=np.float32)
+      for p in range(self.n_permutations): 
+        order = np.arange(y.shape[0])
+        for block in blocks: 
+          order[block] = block[torch.randperm(len(block), generator=generator).numpy()]
+        permuted[:, p] = y[order]
+      return permuted
+                  
     def _single_run(self, X, y, covariates, perm_run: bool = False):
         """
         Perform a full cross-validation run (real data or permuted targets).
@@ -485,6 +518,13 @@ class CPMAnalysis:
         else:
             results_directory = self.results_directory
 
+        # For a RepeatedKFold the outer split index runs 0..(n_splits*n_repeats-1)
+        # with all folds of repeat 0 first, the repeat 1, etc. Derive the repeat
+        # id so indiv-level outputs can be averaged across repeats; plain
+        # (non-repeated) CVs have n_repeats == 1, so every fold is repeat 0. 
+        n_repeats = get attr(self.cv, 'n_repeats', 1)
+        splits_per_repeat = max(self.cv.get_n_splits() // n_repeats, 1)
+
         # Retain per-fold edge masks (for edges.npy) only on the real run; the
         # permutation pass keeps just the fold-sum for the stability null, which
         # avoids a [Features, 2, Folds, n_permutations] tensor (huge for big
@@ -492,14 +532,10 @@ class CPMAnalysis:
         results_manager = ResultsManager(output_dir=results_directory, n_runs=y.shape[1],
                                          n_folds=self.cv.get_n_splits(), n_features=X.shape[1],
                                          device=self.device, store_fold_edges=not perm_run,
-                                         available_models=self._available_models())
-
-        # For a RepeatedKFold the outer split index runs 0..(n_splits*n_repeats-1)
-        # with all folds of repeat 0 first, then repeat 1, etc. Derive the repeat
-        # id so individual-level outputs can be averaged across repeats; plain
-        # (non-repeated) CVs have n_repeats == 1, so every fold is repeat 0.
-        n_repeats = getattr(self.cv, 'n_repeats', 1)
-        splits_per_repeat = max(self.cv.get_n_splits() // n_repeats, 1)
+                                         available_models=self._available_models(),
+                                         store_edge_stats=not perm_run, 
+                                         pack_fold_edges=self.pack_fold_edges, 
+                                         n_samples=X.shape[0], n_repeats=n_repeats)
 
         # Move the full dataset to the compute device once, rather than
         # re-uploading each fold's slice on every downstream torch.as_tensor
@@ -533,12 +569,16 @@ class CPMAnalysis:
                 repeat = outer_fold // splits_per_repeat
                 self._run_outer_fold(outer_fold, repeat, train, test, X_dev, y_chunk,
                                      cov_dev, results_manager, perm_run, run_idx=run_idx)
+                # Every subject has been tested once -> score this repeat on pooled predictions
+                if (outer_fold + 1) % splits_per_repeat == 0: 
+                  results_manager.finish_repeat(repeat, run_idx)
                 iterator.update(1)
         iterator.close()
 
         # Aggregate across folds
         results_manager.calculate_final_cv_results(task_type=self.task_type)
         results_manager.calculate_edge_stability()
+        results_manager.save_pooled metrics()
 
         if not perm_run:
             self.logger.info(results_manager.agg_results.round(4).to_string())
@@ -572,7 +612,7 @@ class CPMAnalysis:
         model.fit(X_train, y_train, cov_train)
 
         y_pred = model.predict(X_test, cov_test, return_proba=True)
-
+        results_manager.store_pooled_predictions(y_pred, y_test, test, run_idx)
         if not perm_run:
             results_manager.store_predictions(y_pred=y_pred, y_true=y_test,
                                               fold=outer_fold, test_indices=test,
@@ -591,12 +631,17 @@ class CPMAnalysis:
         """
         Determine edge masks for this fold, either via inner CV hyperparameter
         search (with optional stability selection) or directly from the single
-        configured edge-selection threshold.
+        configured edge-selection threshold. With ``fixed_edges`` the fold's
+        precomputed masks are used as-is and no selection is run. 
 
         Returns
         -------
         edges : torch.Tensor [N_features, 2, N_runs]
         """
+        if self.fixed_edges is not None: 
+          mask = torch.as_tensor(self.fixed_edges[:, :, outer_fold], dtype=torch.bool, device=self.device)
+          return mask.unsqueeze(-1).expand(-1, -1, y_train.shape[1]).clone()
+          
         if self.inner_cv:
             best_params, stability_edges = run_inner_folds(
                 cpm_model=self.cpm_model,
@@ -617,6 +662,7 @@ class CPMAnalysis:
 
         r_edges, t_edges, df = self.edge_selection.statistic.fit_transform(
             X=X_train, y=y_train, covariates=cov_train, device=self.device)
+        results_manager.store_edge_statistics(r_edges)
         self.edge_selection.r_edges = r_edges
         self.edge_selection.t_edges = t_edges
         self.edge_selection.df = df
