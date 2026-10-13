@@ -1,3 +1,45 @@
+# PATHS_cpm (FERN Lab @ UVM)
+  
+  This is a fork of [wwu-mmll/confound_corrected_cpm](https://github.com/wwu-mml
+  l/confound_corrected_cpm) at v0.7.0. It adds options used 
+  in our ABCD adversity CPM analyses, which follow Simon et al. (2026, *Commun
+  Biol*, doi:10.1038/s42003-026-10822-8). Every option added is off by
+  default, so with the defaults, the package behaves like the author's v0.7.0.
+
+## What we added
+  
+  We made eight changes to v0.7.0.
+
+  Two of them set how the author's analysis is run. A new FixedSplits class (splits.py), passed in
+  as cv, supplies precomputed outer folds, so every model is trained and tested on the same
+  subjects. The permutation_groups option (cpm_analysis.py) restricts the permutation test to
+  shuffling the target within blocks, such as site.
+
+  Four changes add outputs without altering the author's results. Each edge's mean and standard
+  deviation of r across folds is now saved (results_manager.py). With effect_size='partial', that r
+  is the partial rather than the semipartial correlation; the selected edges are unchanged
+  (statistics.py, edge_selection.py). With pack_fold_edges=True, the per-fold edge masks are saved
+  bit-packed in edges_packed.npz instead of edges.npy (results_manager.py). Finally, predictions
+  are also scored pooled across all subjects in each repeat (Spearman and R²), with a permutation
+  p-value computed on the median over repeats (results_manager.py, inference.py).
+
+  The last two are opt-in and off in our main runs. edge_mask restricts edge selection to a
+  predefined set of edges (edge_selection.py), and fixed_edges skips selection and fits each fold
+  on given edge masks (cpm_analysis.py).
+
+  ## Notes
+  - v0.7.0 cannot take a text covariate column (such as site) alongside numeric ones. One-hot
+  encode it first: `pd.get_dummies(covariates, drop_first=True, dtype=float)`.
+  - `src/cccpm/run_cpm.py` is our cluster driver (one target per Slurm array task). It isn't part
+  of the library.
+  - This repo holds no ABCD data, subject IDs or results.
+
+  ## Credit
+  CCCPM is by Nils Winter, Juraj Howe and colleagues (MIT license). If you use this code, cite the
+  original package; see `CITATION.cff`.
+
+--------------------------------------------------------------------------------------------------------
+
 [![GitHub Workflow Status](https://github.com/wwu-mmll/confound_corrected_cpm/actions/workflows/test.yml/badge.svg)](https://github.com/wwu-mmll/confound_corrected_cpm/actions/workflows/test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/wwu-mmll/confound_corrected_cpm/badge.svg)](https://coveralls.io/github/wwu-mmll/confound_corrected_cpm)
 [![Github Contributors](https://img.shields.io/github/contributors-anon/wwu-mmll/confound_corrected_cpm?color=blue)](https://github.com/wwu-mmll/confound_corrected_cpm/graphs/contributors)
