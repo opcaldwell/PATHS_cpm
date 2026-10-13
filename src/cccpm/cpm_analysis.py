@@ -460,7 +460,7 @@ class CPMAnalysis:
                 method=self.stability_significance_method,
                 nbs_stability_threshold=self.nbs_stability_threshold,
                 nbs_component_stat=self.nbs_component_stat)
-          pooled_permutation_p_values(self.results_directory)
+            pooled_permutation_p_values(self.results_directory)
 
         self.logger.info("=" * 50)
         self.logger.info("Estimation completed.")
@@ -474,8 +474,8 @@ class CPMAnalysis:
         reporter.generate_html_report()
 
     def _create_permuted_y(self, y):
-      if self.permutation_groups is not None: 
-        return self._create_block_permuted_y(y)
+        if self.permutation_groups is not None: 
+            return self._create_block_permuted_y(y)
         # 1. Create a matrix of the repeat vector
         y_tensor = to_device(y, "cpu")
         y_matrix = y_tensor.unsqueeze(0).expand(self.n_permutations, -1)
@@ -495,7 +495,7 @@ class CPMAnalysis:
         return permuted.t().numpy()
 
     def _create_block_permuted_y(self, y): 
-      y = np.asarray(y, dtype.np.float32).reshape(-1)
+      y = np.asarray(y, dtype=np.float32).reshape(-1)
       blocks = [np.flatnonzero(self.permutation_groups == g) for g in np.unique(self.permutation_groups)]
       generator = torch.Generator().manual_seed(self.random_state)
       permuted = np.empty((y.shape[0], self.n_permutations), dtype=np.float32)
@@ -522,7 +522,7 @@ class CPMAnalysis:
         # with all folds of repeat 0 first, the repeat 1, etc. Derive the repeat
         # id so indiv-level outputs can be averaged across repeats; plain
         # (non-repeated) CVs have n_repeats == 1, so every fold is repeat 0. 
-        n_repeats = get attr(self.cv, 'n_repeats', 1)
+        n_repeats = getattr(self.cv, 'n_repeats', 1)
         splits_per_repeat = max(self.cv.get_n_splits() // n_repeats, 1)
 
         # Retain per-fold edge masks (for edges.npy) only on the real run; the
@@ -578,7 +578,7 @@ class CPMAnalysis:
         # Aggregate across folds
         results_manager.calculate_final_cv_results(task_type=self.task_type)
         results_manager.calculate_edge_stability()
-        results_manager.save_pooled metrics()
+        results_manager.save_pooled_metrics()
 
         if not perm_run:
             self.logger.info(results_manager.agg_results.round(4).to_string())
