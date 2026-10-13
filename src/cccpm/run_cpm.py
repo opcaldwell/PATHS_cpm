@@ -37,7 +37,7 @@ cpm = CPMAnalysis(results_directory=os.path.join(OUTPUT_DIR, target),
                   edge_selection=edge_selection,
                   impute_missing_values=False,
                   n_permutations=int(sys.argv[1]),
-                  permutation_groups=covariates['site'],
+                  permutation_groups=covariates='site',
                   pack_fold_edges=True)
 
 cpm.run(X=X, y=targets[target].values, covariates=covariates)
