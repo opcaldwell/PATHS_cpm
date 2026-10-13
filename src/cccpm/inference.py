@@ -22,7 +22,7 @@ import pandas as pd
 
 import networkx as nx
 
-from cccpm.constants import Networks
+from cccpm.constants import Models, Networks
 from cccpm.results_manager import ResultsManager
 
 
@@ -402,3 +402,23 @@ class PermutationManager:
         if return_diagnostics:
             return sig, meta
         return sig
+   
+    def pooled_permutation_p_values(results_directory): 
+        """
+        Permutation p-values on the pooled metrics (Spearman rho and prediction R^2).
+
+        Median over repeats, computed for real run, and each permutation (Simon et al., 2026). 
+        P-values follow +1 rule (Phipson B, Smyth GK 2010). Writes ``pooled_p_values.csv`` with one row per model x network.
+
+        :param results_directory: Directory with ``pooled_metrics.npy`` and a ``permutation`` subfolder 
+        its null counterpart. 
+        """
+        true = np.load(os.path.join(results_directory, 'pooled_metrics.npy'))
+        null = np.load(os.path.join(results_directory, 'permutation', 'pooled_metrics.npy'))
+        true_stat = np.median(true[..., 0], axis=0)
+        null_stat = np.median(null, axis=0)
+        p = (1 + (null_stat >= true_stat[..., None]).sum(axis=-1)) / (1 + null_stat.shape[-1])
+        rows = [{'model': m.name, 'network': n.name, 
+                 'spearman': true_stat[0, m, n], 'p_r2': p[1, m, n]}
+                for m in Models for n in Networks]
+        pd.DataFrame(rows).to_csv(os.path.join(results_directory, 'pooled_p_values.csv'), index=False)
