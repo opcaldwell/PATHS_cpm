@@ -404,15 +404,15 @@ class PermutationManager:
         return sig
    
 def pooled_permutation_p_values(results_directory): 
-"""
-Permutation p-values on the pooled metrics (Spearman rho and prediction R^2).
+    """
+    Permutation p-values on the pooled metrics (Spearman rho and prediction R^2).
 
-Median over repeats, computed for real run, and each permutation (Simon et al., 2026). 
-P-values follow +1 rule (Phipson B, Smyth GK 2010). Writes ``pooled_p_values.csv`` with one row per model x network.
+    Median over repeats, computed for real run, and each permutation (Simon et al., 2026). 
+    P-values follow +1 rule (Phipson B, Smyth GK 2010). Writes ``pooled_p_values.csv`` with one row per model x network.
 
-:param results_directory: Directory with ``pooled_metrics.npy`` and a ``permutation`` subfolder 
-its null counterpart. 
-"""
+    :param results_directory: Directory with ``pooled_metrics.npy`` and a ``permutation`` subfolder 
+    its null counterpart. 
+    """
     true = np.load(os.path.join(results_directory, 'pooled_metrics.npy'))
     null = np.load(os.path.join(results_directory, 'permutation', 'pooled_metrics.npy'))
     true_stat = np.median(true[..., 0], axis=0)
