@@ -25,11 +25,11 @@ cv = FixedSplits.load(os.path.join(DATA_DIR, 'folds.npz'))
 edge_selection = UnivariateEdgeSelection(
     selection_statistic='pearson',
     selection_input='residualized', 
-    edge_selection_threshold=[PThreshold(threshold=[0.05],
+    edge_selection=[PThreshold(threshold=[0.05],
                                          correction=[None])],
                                          effect_size='partial')
 
-cpm = CPMAnalysis(results_directior=os.path.join(OUTPUT_DIR, target),
+cpm = CPMAnalysis(results_directory=os.path.join(OUTPUT_DIR, target),
                   cv=cv,
                   edge_selection=edge_selection,
                   impute_missing_values=False,
