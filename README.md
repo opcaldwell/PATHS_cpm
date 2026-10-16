@@ -27,13 +27,6 @@
   predefined set of edges (edge_selection.py), and fixed_edges skips selection and fits each fold
   on given edge masks (cpm_analysis.py).
 
-  ## Notes
-  - v0.7.0 cannot take a text covariate column (such as site) alongside numeric ones. One-hot
-  encode it first: `pd.get_dummies(covariates, drop_first=True, dtype=float)`.
-  - `src/cccpm/run_cpm.py` is our cluster driver (one target per Slurm array task). It isn't part
-  of the library.
-  - This repo holds no ABCD data, subject IDs or results.
-
   ## Credit
   CCCPM is by Nils Winter, Juraj Howe and colleagues (MIT license). If you use this code, cite the
   original package; see `CITATION.cff`.
