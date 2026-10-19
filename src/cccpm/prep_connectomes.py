@@ -60,7 +60,7 @@ def kept_frames(mask_file):
         
 # Make the output folder and record options selected for run. 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-with open(os.path.join(OUTPUT_DIR, 'options.json'), 'w') as f: 
+with open(os.path.join(OUTPUT_DIR, 'options.json'), 'w', encoding='utf-8') as f: 
   json.dump(vars(args), f, indent=2)
 print(vars(args))
 
