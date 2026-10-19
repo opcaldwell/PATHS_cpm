@@ -8,8 +8,10 @@ import torch
 from cccpm import CPMAnalysis, UnivariateEdgeSelection, PThreshold
 from cccpm.splits import FixedSplits
 
-DATA_DIR = '/gpfs2/scratch/ocaldwe1/paths/cpm_input'
-OUTPUT_DIR = '/gpfs2/scratch/ocaldwe1/paths/cpm_results'
+# Allows selection of rest/n-back. Each has own inputs and results. 
+STATE = sys.argv[2]
+DATA_DIR = ('/gpfs2/scratch/ocaldwe1/paths/cpm_input', STATE)
+OUTPUT_DIR = ('/gpfs2/scratch/ocaldwe1/paths/cpm_results', STATE)
 
 torch.set_num_threads(int(os.environ['SLURM_CPUS_PER_TASK']))
 
@@ -28,8 +30,9 @@ edge_selection = UnivariateEdgeSelection(
     selection_statistic='pearson',
     selection_input='residualized', 
     edge_selection=[PThreshold(threshold=[0.05],
-                                         correction=[None])],
-                                         effect_size='partial')
+                               correction=[None])],
+                               effect_size='partial',
+                               edge_mask=np.load(os.path.join(DATA_DIR, 'edge_mask.npy')))
 
 cpm = CPMAnalysis(results_directory=os.path.join(OUTPUT_DIR, target),
                   cv=cv,
