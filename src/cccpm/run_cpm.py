@@ -10,8 +10,8 @@ from cccpm.splits import FixedSplits
 
 # Allows selection of rest/n-back. Each has own inputs and results. 
 STATE = sys.argv[2]
-DATA_DIR = ('/gpfs2/scratch/ocaldwe1/paths/cpm_input', STATE)
-OUTPUT_DIR = ('/gpfs2/scratch/ocaldwe1/paths/cpm_results', STATE)
+DATA_DIR = os.path.join('/gpfs2/scratch/ocaldwe1/paths/cpm_input', STATE)
+OUTPUT_DIR = os.path.join('/gpfs2/scratch/ocaldwe1/paths/cpm_results', STATE)
 
 torch.set_num_threads(int(os.environ['SLURM_CPUS_PER_TASK']))
 
