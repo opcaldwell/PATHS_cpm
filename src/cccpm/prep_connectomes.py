@@ -81,7 +81,7 @@ nodes = [i for i, name in enumerate(names) # Goes through parcel names keeping p
 node_mask = np.zeros((len(names), len(names)), dtype=bool) # 352 x 352 grid all False
 node_mask[nodes, :] = True 
 node_mask[:, nodes] = True 
-np.save(os.path.join(OUTPUT_DIR, 'edgue_mask.npy'), node_mask[triu])
+np.save(os.path.join(OUTPUT_DIR, 'edge_mask.npy'), node_mask[triu])
 print('edge mask nodes:', [names[i] for i in nodes], '| edges:', 
 node_mask[triu].sum())
 
