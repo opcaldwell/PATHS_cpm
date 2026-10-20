@@ -23,9 +23,16 @@
   are also scored pooled across all subjects in each repeat (Spearman and R²), with a permutation
   p-value computed on the median over repeats (results_manager.py, inference.py).
 
-  The last two are opt-in and off in our main runs. edge_mask restricts edge selection to a
-  predefined set of edges (edge_selection.py), and fixed_edges skips selection and fits each fold
-  on given edge masks (cpm_analysis.py).
+  The last two are opt-in. edge_mask restricts edge selection to a  predefined set of edges
+  (edge_selection.py). Our main runs use it to keep edges touching L and R amygdala and hippocampus
+  and fixed_edges skips selection and fits each fold on given edge masks (cpm_analysis.py).
+
+3 scripts were added to src/cccpm that run our analyses on ABCD release 6.1. They run in 
+order
+  1. prep_connectomes.py: motion corrected Gordon connectomes and edge mask
+  2. prep_inputs.py: joins tabulated data and adversity factor scores, applies exclusions, keep one child per
+     family, builds site-stratified 10 fold x 100-repeat splits.
+  4. run_cpm.py: runs one CPM per SLURM array task
 
   ## Credit
   CCCPM is by Nils Winter, Juraj Howe and colleagues (MIT license). If you use this code, cite the
