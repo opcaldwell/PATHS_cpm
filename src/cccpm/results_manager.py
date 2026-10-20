@@ -360,7 +360,7 @@ class ResultsManager:
        
         # Increment = full - covariates; only the R^2 diff is a stat
         r2[Models.increment] = r2[Models.full] - r2[Models.covariates]
-        rho[Models.Increment] = np.nan
+        rho[Models.increment] = np.nan
         self.pooled_metrics[repeat, :, :, :, run_idx] = np.stack([rho, r2])
         self.pooled_pred[:, :, :, run_idx] = float('nan')
         self.pooled_true[:, run_idx] = float ('nan')
