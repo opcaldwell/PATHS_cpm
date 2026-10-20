@@ -418,6 +418,7 @@ def pooled_permutation_p_values(results_directory):
     true_stat = np.median(true[..., 0], axis=0)
     null_stat = np.median(null, axis=0)
     p = (1 + (null_stat >= true_stat[..., None]).sum(axis=-1)) / (1 + null_stat.shape[-1])
+    p[np.isnan(true_stat)] = np.nan # No p-value for an undefined statistic 
     rows = [{'model': m.name, 'network': n.name,
                'spearman': true_stat[0, m, n], 'r2': true_stat[1, m, n],
                'p_spearman': p[0, m, n], 'p_r2': p[1, m, n]}
